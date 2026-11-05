@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model SystemCheck {
+  id        String   @id @default(cuid())
+  label     String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  RECRUITER
+  CANDIDATE
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  PARSED
+  ASSESSMENT_READY
+  RECRUITER_REVIEW
+  SHORTLISTED
+  REJECTED
+  INTERVIEW
+  SELECTED
+}
+
+model User {
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  role              Role
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  candidateProfile  CandidateProfile?
+  recruiterProfile  RecruiterProfile?
+  jobs              Job[]              @relation("RecruiterJobs")
+  applications      Application[]      @relation("CandidateApplications")
+  resumes           Resume[]           @relation("CandidateResumes")
+  auditEvents       AuditEvent[]       @relation("ActorAuditEvents")
+  interviews        Interview[]        @relation("InterviewerInterviews")
+}
+
+model CandidateProfile {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  headline        String?
+  phone           String?
+  location        String?
+  resumeText      String?
+  extractedSkills String        @default("[]")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecruiterProfile {
+  id           String @id @default(cuid())
+  userId       String @unique
+  organization String?
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id                String      @id @default(cuid())
+  recruiterId       String
+  title             String
+  department        String
+  location          String
+  employmentType    String
+  salary            String?
+  description       String
+  requiredSkills    String      @default("[]")
+  preferredSkills   String      @default("[]")
+  skillImportance   String      @default("{}")
+  experience        String?
+  qualifications    String?
+  aiRequirements    String?
+  aiSourceHash      String?
+  embedding         String?
+  embeddingSourceHash String?
+  status            JobStatus   @default(OPEN)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  recruiter         User        @relation("RecruiterJobs", fields: [recruiterId], references: [id], onDelete: Cascade)
+  applications      Application[]
+  interviews        Interview[]
+
+  @@index([recruiterId, status])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  candidateId String
+  jobId       String
+  resumeId    String
+  status      ApplicationStatus @default(SUBMITTED)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  candidate   User              @relation("CandidateApplications", fields: [candidateId], references: [id], onDelete: Cascade)
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume      Resume            @relation(fields: [resumeId], references: [id], onDelete: Restrict)
+  assessment  Assessment?
+  audits      AuditEvent[]
+  interviews  Interview[]
+  interviewQuestions InterviewQuestion[]
+
+  @@unique([candidateId, jobId])
+  @@index([jobId, status])
+}
+
+model Resume {
+  id              String        @id @default(cuid())
+  candidateId     String
+  originalName    String
+  mimeType        String
+  storagePath     String
+  text            String
+  extractedData   String        @default("{}")
+  extractionError String?
+  embedding       String?
+  embeddingSourceHash String?
+  reviewedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  candidate       User          @relation("CandidateResumes", fields: [candidateId], references: [id], onDelete: Cascade)
+  applications    Application[]
+
+  @@index([candidateId, createdAt])
+}
+
+model Assessment {
+  id              String      @id @default(cuid())
+  applicationId   String      @unique
+  score           Float?
+  matchedSkills   String      @default("[]")
+  missingEvidence String      @default("[]")
+  explanation     String?
+  evidence        String      @default("[]")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id            String       @id @default(cuid())
+  applicationId String?
+  actorId       String?
+  action        String
+  detail        String?
+  createdAt     DateTime     @default(now())
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor         User?        @relation("ActorAuditEvents", fields: [actorId], references: [id], onDelete: SetNull)
+}
+
+model Interview {
+  id            String       @id @default(cuid())
+  jobId         String
+  applicationId String?
+  interviewerId String
+  scheduledAt   DateTime
+  interviewType String
+  feedback      String?
+  decision      String?
+  createdAt     DateTime     @default(now())
+  job           Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  interviewer   User         @relation("InterviewerInterviews", fields: [interviewerId], references: [id], onDelete: Cascade)
+}
+
+model InterviewQuestion {
+  id            String      @id @default(cuid())
+  applicationId String
+  question      String
+  difficulty    String
+  guideline     String
+  evidence      String?
+  sourceHash    String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
