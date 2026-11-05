@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate deploy",
     "db:verify": "tsx scripts/verify-module-0.ts",
     "match:verify": "tsx scripts/verify-module-3.ts",
     "interview:verify": "tsx scripts/verify-module-4.ts",
@@ -20,6 +20,8 @@
   "private": true,
   "dependencies": {
     "@google/genai": "^2.32.0",
+    "@neon/config": "^1.11.3",
+    "@neon/env": "^1.6.15",
     "@prisma/client": "^6.19.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.15",

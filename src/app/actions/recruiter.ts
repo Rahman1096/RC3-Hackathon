@@ -42,12 +42,13 @@ export async function runAssessmentAction(applicationId: string) {
 export async function setApplicationStatusAction(applicationId: string, status: "RECRUITER_REVIEW" | "SHORTLISTED" | "REJECTED" | "INTERVIEW") {
   const { user, application } = await owned(applicationId);
   if (!["RECRUITER_REVIEW", "SHORTLISTED", "REJECTED", "INTERVIEW"].includes(status)) throw new Error("Invalid application status.");
-  if (application.status === status) return;
+  if (application.status === status) redirect(`/recruiter/jobs/${application.jobId}/applicants?updated=1`);
   await prisma.$transaction([
     prisma.application.update({ where: { id: applicationId }, data: { status } }),
     prisma.auditEvent.create({ data: { applicationId, actorId: user.id, action: "STATUS_CHANGED", detail: `Status: ${application.status} -> ${status}` } }),
   ]);
   refresh(application.jobId);
+  redirect(`/recruiter/jobs/${application.jobId}/applicants?updated=1`);
 }
 
 export async function addRecruiterNoteAction(applicationId: string, formData: FormData) {

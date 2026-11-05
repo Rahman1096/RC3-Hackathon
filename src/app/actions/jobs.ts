@@ -23,7 +23,7 @@ export async function createJobAction(formData: FormData) {
   const user = await requireRole("RECRUITER");
   const job = await prisma.job.create({ data: { ...readJob(formData), recruiterId: user.id } });
   await refreshJobAi(job.id, job.description, null);
-  redirect(`/recruiter/jobs/${job.id}/edit`);
+  redirect(`/recruiter/jobs/${job.id}/edit?saved=1`);
 }
 
 export async function updateJobAction(jobId: string, formData: FormData) {
@@ -39,7 +39,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     ]);
   }
   await refreshJobAi(jobId, data.description, job.aiSourceHash);
-  revalidatePath("/recruiter"); revalidatePath(`/recruiter/jobs/${jobId}/edit`); revalidatePath("/jobs");
+  revalidatePath("/recruiter"); revalidatePath(`/recruiter/jobs/${jobId}/edit`); revalidatePath("/jobs"); redirect(`/recruiter/jobs/${jobId}/edit?saved=1`);
 }
 
 async function refreshJobAi(jobId: string, description: string, previousHash: string | null) {

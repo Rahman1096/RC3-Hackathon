@@ -1,8 +1,5 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PDFParse } from "pdf-parse";
@@ -21,11 +18,9 @@ export async function uploadResumeAction(formData: FormData) {
   let text = "";
   try { const parser = new PDFParse({ data: bytes }); const result = await parser.getText(); text = result.text.trim(); await parser.destroy(); } catch { redirect("/candidate/resumes/new?error=This+PDF+could+not+be+read"); }
   if (!text) redirect("/candidate/resumes/new?error=This+PDF+has+no+extractable+text+(it+may+be+scanned)");
-  const directory = path.join(process.cwd(), "data", "private-resumes", user.id); await mkdir(directory, { recursive: true });
-  const filename = `${randomUUID()}.pdf`; await writeFile(path.join(directory, filename), bytes);
   let extractedData = "{}"; let extractionError: string | null = null;
   try { const data = await extractWithAi(text); extractedData = JSON.stringify(data); extractionError = extractionWarning(text, data); } catch (error) { extractionError = error instanceof Error ? error.message : "AI extraction failed."; }
-  const resume = await prisma.resume.create({ data: { candidateId: user.id, originalName: file.name.slice(0, 180), mimeType: "application/pdf", storagePath: path.join(user.id, filename), text, extractedData, extractionError } });
+  const resume = await prisma.resume.create({ data: { candidateId: user.id, originalName: file.name.slice(0, 180), mimeType: "application/pdf", storagePath: "database", fileData: bytes, text, extractedData, extractionError } });
   redirect(`/candidate/resumes/${resume.id}`);
 }
 

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -127,7 +127,8 @@ model Resume {
   originalName    String
   mimeType        String
   storagePath     String
-  text            String
+  fileData          Bytes?
+  text              String
   extractedData   String        @default("{}")
   extractionError String?
   embedding       String?

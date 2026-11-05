@@ -14,6 +14,10 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Vercel + Neon deployment
+
+Create a free Neon PostgreSQL database and set its pooled connection string as `DATABASE_URL` in Vercel. Also set `AUTH_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `GEMINI_EMBEDDING_MODEL`. The Vercel build pushes the Prisma schema to the empty Neon database before building the app. Uploaded PDF bytes are stored in PostgreSQL so they do not depend on Vercel's temporary filesystem.
+
 ## Optional live AI configuration
 
 Set these in `.env` without sharing secrets in chat:
