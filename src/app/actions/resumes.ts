@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/access";
-import { extractWithAi, normalizeResumeData, resumeDataSchema } from "@/lib/resume";
+import { extractWithAi, extractionWarning, normalizeResumeData, normalizeSkill, resumeDataSchema } from "@/lib/resume";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 export async function uploadResumeAction(formData: FormData) {
@@ -24,14 +24,16 @@ export async function uploadResumeAction(formData: FormData) {
   const directory = path.join(process.cwd(), "data", "private-resumes", user.id); await mkdir(directory, { recursive: true });
   const filename = `${randomUUID()}.pdf`; await writeFile(path.join(directory, filename), bytes);
   let extractedData = "{}"; let extractionError: string | null = null;
-  try { extractedData = JSON.stringify(await extractWithAi(text)); } catch (error) { extractionError = error instanceof Error ? error.message : "AI extraction failed."; }
+  try { const data = await extractWithAi(text); extractedData = JSON.stringify(data); extractionError = extractionWarning(text, data); } catch (error) { extractionError = error instanceof Error ? error.message : "AI extraction failed."; }
   const resume = await prisma.resume.create({ data: { candidateId: user.id, originalName: file.name.slice(0, 180), mimeType: "application/pdf", storagePath: path.join(user.id, filename), text, extractedData, extractionError } });
   redirect(`/candidate/resumes/${resume.id}`);
 }
 
 export async function updateResumeAction(resumeId: string, formData: FormData) {
   const user = await requireRole("CANDIDATE"); const resume = await prisma.resume.findFirst({ where: { id: resumeId, candidateId: user.id } }); if (!resume) redirect("/jobs");
-  const raw = { name: String(formData.get("name") || "").trim() || undefined, email: String(formData.get("email") || "").trim() || undefined, phone: String(formData.get("phone") || "").trim() || undefined, location: String(formData.get("location") || "").trim() || undefined, skills: String(formData.get("skills") || "").split(",").map((value) => ({ value: value.trim() })).filter((item) => item.value), education: String(formData.get("education") || "").split("\n").map((value) => ({ value: value.trim() })).filter((item) => item.value), experience: String(formData.get("experience") || "").split("\n").map((value) => ({ value: value.trim() })).filter((item) => item.value), projects: String(formData.get("projects") || "").split("\n").map((value) => ({ value: value.trim() })).filter((item) => item.value) };
+  const existing = resumeDataSchema.parse(JSON.parse(resume.extractedData));
+  const entries = (field: "skills" | "learningInterests" | "education" | "experience" | "projects", separator: string, normalize = (value: string) => value.trim().toLowerCase()) => String(formData.get(field) || "").split(separator).map((value) => value.trim()).filter(Boolean).map((value) => ({ value, evidence: existing[field].find((item) => normalize(item.value) === normalize(value))?.evidence }));
+  const raw = { name: String(formData.get("name") || "").trim() || undefined, email: String(formData.get("email") || "").trim() || undefined, phone: String(formData.get("phone") || "").trim() || undefined, location: String(formData.get("location") || "").trim() || undefined, skills: entries("skills", ",", (value) => normalizeSkill(value).toLowerCase()), learningInterests: entries("learningInterests", "\n"), education: entries("education", "\n"), experience: entries("experience", "\n"), projects: entries("projects", "\n") };
   const data = normalizeResumeData(resumeDataSchema.parse(raw));
   const applications = await prisma.application.findMany({ where: { resumeId: resume.id }, select: { id: true, status: true } });
   await prisma.$transaction([
@@ -40,7 +42,7 @@ export async function updateResumeAction(resumeId: string, formData: FormData) {
     prisma.assessment.deleteMany({ where: { applicationId: { in: applications.map((application) => application.id) } } }),
     ...applications.map((application) => prisma.auditEvent.create({ data: { applicationId: application.id, actorId: user.id, action: "ASSESSMENT_INVALIDATED", detail: `Assessment cleared after candidate profile edit; application status remains ${application.status}.` } })),
   ]);
-  revalidatePath(`/candidate/resumes/${resume.id}`); revalidatePath("/jobs");
+  revalidatePath(`/candidate/resumes/${resume.id}`); revalidatePath("/jobs"); redirect(`/candidate/resumes/${resume.id}?saved=1`);
 }
 
 export async function applyToJobAction(jobId: string, formData: FormData) {

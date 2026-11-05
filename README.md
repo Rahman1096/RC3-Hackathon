@@ -20,7 +20,7 @@ Set these in `.env` without sharing secrets in chat:
 
 ```dotenv
 GEMINI_API_KEY="your-key"
-GEMINI_MODEL="gemini-2.5-flash-lite"
+GEMINI_MODEL="gemini-3.5-flash-lite"
 GEMINI_EMBEDDING_MODEL="gemini-embedding-001"
 ```
 

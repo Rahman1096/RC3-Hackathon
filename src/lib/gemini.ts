@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
-export const generationModel = () => process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+export const generationModel = () => process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 export const embeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 export const sourceHash = (text: string) => createHash("sha256").update(text).digest("hex");
 

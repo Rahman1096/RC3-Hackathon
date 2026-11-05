@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:verify": "tsx scripts/verify-module-0.ts",
-    "match:verify": "tsx scripts/verify-module-3.ts"
+    "match:verify": "tsx scripts/verify-module-3.ts",
+    "interview:verify": "tsx scripts/verify-module-4.ts",
+    "resume:verify": "tsx scripts/verify-resume-regression.ts"
   },
   "keywords": [],
   "author": "",
