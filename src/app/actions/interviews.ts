@@ -69,4 +69,5 @@ export async function saveFeedbackAction(interviewId: string, formData: FormData
   const recruiter = await requireRole("RECRUITER"); const interview = await prisma.interview.findFirst({ where: { id: interviewId, job: { recruiterId: recruiter.id } }, include: { application: true } }); if (!interview) redirect("/recruiter"); const feedback = feedbackSchema.parse(Object.fromEntries(formData)); const newStatus = feedback.decision === "SELECTED" ? "SELECTED" : feedback.decision === "REJECTED" ? "REJECTED" : "INTERVIEW";
   await prisma.$transaction([prisma.interview.update({ where: { id: interviewId }, data: { feedback: JSON.stringify(feedback), decision: feedback.decision } }), ...(interview.applicationId ? [prisma.application.update({ where: { id: interview.applicationId }, data: { status: newStatus } }), prisma.auditEvent.create({ data: { applicationId: interview.applicationId, actorId: recruiter.id, action: "STATUS_CHANGED", detail: `Status updated to ${newStatus} after private feedback.` } })] : [])]);
   refresh(interview.jobId, interview.application?.candidateId);
+  redirect("/recruiter/interviews?success=Feedback+saved+successfully.");
 }
