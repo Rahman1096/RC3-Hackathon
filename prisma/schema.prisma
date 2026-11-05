@@ -48,6 +48,7 @@ model User {
   applications      Application[]      @relation("CandidateApplications")
   resumes           Resume[]           @relation("CandidateResumes")
   auditEvents       AuditEvent[]       @relation("ActorAuditEvents")
+  recruiterNotes    RecruiterNote[]
   interviews        Interview[]        @relation("InterviewerInterviews")
 }
 
@@ -87,6 +88,8 @@ model Job {
   aiSourceHash      String?
   embedding         String?
   embeddingSourceHash String?
+  skillEmbeddings    String?
+  skillEmbeddingsHash String?
   status            JobStatus   @default(OPEN)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -112,6 +115,7 @@ model Application {
   audits      AuditEvent[]
   interviews  Interview[]
   interviewQuestions InterviewQuestion[]
+  notes       RecruiterNote[]
 
   @@unique([candidateId, jobId])
   @@index([jobId, status])
@@ -128,6 +132,8 @@ model Resume {
   extractionError String?
   embedding       String?
   embeddingSourceHash String?
+  excerptIndex    String?
+  excerptIndexHash String?
   reviewedAt      DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -141,6 +147,13 @@ model Assessment {
   id              String      @id @default(cuid())
   applicationId   String      @unique
   score           Float?
+  skillScore      Float?
+  experienceScore Float?
+  projectScore    Float?
+  qualificationScore Float?
+  semanticScore   Float?
+  sourceHash      String?
+  error           String?
   matchedSkills   String      @default("[]")
   missingEvidence String      @default("[]")
   explanation     String?
@@ -148,6 +161,18 @@ model Assessment {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model RecruiterNote {
+  id            String      @id @default(cuid())
+  applicationId String
+  recruiterId   String
+  content       String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  recruiter     User        @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
 }
 
 model AuditEvent {
@@ -167,9 +192,12 @@ model Interview {
   applicationId String?
   interviewerId String
   scheduledAt   DateTime
+  timezone      String      @default("Asia/Karachi")
+  durationMinutes Int       @default(45)
   interviewType String
   feedback      String?
   decision      String?
+  notificationState String? @default("Simulated notification pending")
   createdAt     DateTime     @default(now())
   job           Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
   application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)

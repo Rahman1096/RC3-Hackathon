@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:verify": "tsx scripts/verify-module-0.ts"
+    "db:verify": "tsx scripts/verify-module-0.ts",
+    "match:verify": "tsx scripts/verify-module-3.ts"
   },
   "keywords": [],
   "author": "",

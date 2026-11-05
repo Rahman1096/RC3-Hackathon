@@ -17,10 +17,14 @@ export async function generateStructured<T>(prompt: string, jsonSchema: object, 
 }
 
 export async function embedText(text: string): Promise<number[]> {
-  const response = await retry(() => client().models.embedContent({ model: embeddingModel(), contents: text, config: { outputDimensionality: 768 } }));
-  const vector = response.embeddings?.[0]?.values;
-  if (!vector?.length) throw new Error("Gemini returned no embedding vector.");
-  return vector;
+  return (await embedTexts([text]))[0];
+}
+
+export async function embedTexts(texts: string[]): Promise<number[][]> {
+  const response = await retry(() => client().models.embedContent({ model: embeddingModel(), contents: texts, config: { outputDimensionality: 768 } }));
+  const vectors = response.embeddings?.map((embedding) => embedding.values || []);
+  if (!vectors?.length || vectors.some((vector) => !vector.length)) throw new Error("Gemini returned no embedding vectors.");
+  return vectors;
 }
 
 export function cosineSimilarity(left: number[], right: number[]) { if (left.length !== right.length || !left.length) return 0; let dot = 0; let a = 0; let b = 0; for (let i = 0; i < left.length; i += 1) { dot += left[i] * right[i]; a += left[i] ** 2; b += right[i] ** 2; } return a && b ? dot / (Math.sqrt(a) * Math.sqrt(b)) : 0; }

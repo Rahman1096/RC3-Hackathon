@@ -31,6 +31,13 @@ export async function updateJobAction(jobId: string, formData: FormData) {
   const job = await prisma.job.findFirst({ where: { id: jobId, recruiterId: user.id } });
   if (!job) redirect("/recruiter");
   const data = readJob(formData); await prisma.job.update({ where: { id: jobId }, data });
+  if (job.description !== data.description || job.requiredSkills !== data.requiredSkills || job.skillImportance !== data.skillImportance || job.experience !== data.experience || job.qualifications !== data.qualifications) {
+    const applications = await prisma.application.findMany({ where: { jobId }, select: { id: true, status: true } });
+    await prisma.$transaction([
+      prisma.assessment.deleteMany({ where: { applicationId: { in: applications.map((application) => application.id) } } }),
+      ...applications.map((application) => prisma.auditEvent.create({ data: { applicationId: application.id, actorId: user.id, action: "ASSESSMENT_INVALIDATED", detail: `Assessment cleared after job requirements changed; application status remains ${application.status}.` } })),
+    ]);
+  }
   await refreshJobAi(jobId, data.description, job.aiSourceHash);
   revalidatePath("/recruiter"); revalidatePath(`/recruiter/jobs/${jobId}/edit`); revalidatePath("/jobs");
 }
