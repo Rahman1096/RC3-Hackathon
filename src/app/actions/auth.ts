@@ -11,8 +11,15 @@ export async function registerAction(formData: FormData) {
   const parsed = z.object({ name: z.string().trim().min(2).max(80), email: z.string().email(), password: z.string().min(8).max(128), role: z.enum(["RECRUITER", "CANDIDATE"]) }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/register?error=Please+enter+valid+details");
   const email = parsed.data.email.toLowerCase();
-  if (await prisma.user.findUnique({ where: { email } })) redirect("/register?error=An+account+already+exists+for+this+email");
-  const user = await prisma.user.create({ data: { name: parsed.data.name, email, passwordHash: await hash(parsed.data.password, 12), role: parsed.data.role, candidateProfile: parsed.data.role === "CANDIDATE" ? { create: {} } : undefined, recruiterProfile: parsed.data.role === "RECRUITER" ? { create: {} } : undefined } });
+  let user;
+  try {
+    if (await prisma.user.findUnique({ where: { email } })) redirect("/register?error=An+account+already+exists+for+this+email");
+    user = await prisma.user.create({ data: { name: parsed.data.name, email, passwordHash: await hash(parsed.data.password, 12), role: parsed.data.role, candidateProfile: parsed.data.role === "CANDIDATE" ? { create: {} } : undefined, recruiterProfile: parsed.data.role === "RECRUITER" ? { create: {} } : undefined } });
+  } catch (error) {
+    if (error instanceof Error && "digest" in error && error.digest === "NEXT_REDIRECT") throw error;
+    console.error("Registration failed", error);
+    redirect("/register?error=Registration+is+temporarily+unavailable.+Please+check+your+details+or+try+again.");
+  }
   await signIn("credentials", { email: user.email, password: parsed.data.password, redirectTo: user.role === "RECRUITER" ? "/recruiter" : "/jobs" });
 }
 
